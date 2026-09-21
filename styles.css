@@ -87,7 +87,13 @@ body {
   line-height: 1.1;
 }
 
-.weight-row,
+.gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gauge-row,
 .slot-meta,
 .slot-head {
   display: flex;
@@ -96,21 +102,21 @@ body {
   gap: 12px;
 }
 
-.weight-row {
+.gauge-row {
   font-size: 14px;
   color: var(--muted);
 }
 
-.weight-track {
+.gauge-track {
   height: 10px;
-  margin: 8px 0 10px;
+  margin: 8px 0 0;
   overflow: hidden;
   border-radius: 999px;
   background: var(--leather-deep);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
-.weight-fill {
+.gauge-fill {
   width: 0;
   height: 100%;
   border-radius: inherit;
@@ -118,15 +124,19 @@ body {
   transition: width 180ms ease, background 180ms ease;
 }
 
-.weight-fill.is-heavy {
+.gauge-fill.is-volume {
+  background: linear-gradient(90deg, #6a8f7a, #c9a35a);
+}
+
+.gauge-fill.is-heavy {
   background: linear-gradient(90deg, #d2b56a, var(--warn));
 }
 
-.weight-fill.is-full {
+.gauge-fill.is-full {
   background: linear-gradient(90deg, var(--warn), var(--full));
 }
 
-.weight-note {
+.gauge-note {
   margin: 0;
   color: var(--paper);
   font-size: 14px;

@@ -1,8 +1,15 @@
 const MAX_WEIGHT = 20;
+const MAX_VOLUME = 16;
 
 const ITEMS = {
-  stick: { id: "stick", name: "Stick", weight: 1, icon: "🪵" },
-  stone: { id: "stone", name: "Stone", weight: 3, icon: "🪨" },
+  stick: { id: "stick", name: "Stick", weight: 1, volume: 2, icon: "🪵" },
+  stone: { id: "stone", name: "Stone", weight: 3, volume: 1, icon: "🪨" },
+};
+
+const REFUSALS = {
+  heavy: { floater: "Too heavy", hint: "Too heavy. Stones are dense — drop something." },
+  bulky: { floater: "No room", hint: "No space left. Sticks are bulky — drop something." },
+  full: { floater: "Pack is full", hint: "Your pack is full. Click an item on the right to drop it." },
 };
 
 const LAYOUT = [
@@ -23,7 +30,10 @@ const emptyEl = document.getElementById("empty");
 const weightLabel = document.getElementById("weight-label");
 const weightFill = document.getElementById("weight-fill");
 const weightMeter = document.getElementById("weight-meter");
-const weightNote = document.getElementById("weight-note");
+const volumeLabel = document.getElementById("volume-label");
+const volumeFill = document.getElementById("volume-fill");
+const volumeMeter = document.getElementById("volume-meter");
+const carryNote = document.getElementById("carry-note");
 
 const state = {
   width: 0,
@@ -47,8 +57,22 @@ function currentWeight() {
   return state.inventory.reduce((sum, stack) => sum + stack.count * ITEMS[stack.id].weight, 0);
 }
 
+function currentVolume() {
+  return state.inventory.reduce((sum, stack) => sum + stack.count * ITEMS[stack.id].volume, 0);
+}
+
+function carryCheck(itemId, count = 1) {
+  const item = ITEMS[itemId];
+  const overweight = currentWeight() + item.weight * count > MAX_WEIGHT;
+  const overvolume = currentVolume() + item.volume * count > MAX_VOLUME;
+  if (overweight && overvolume) return { ok: false, reason: "full" };
+  if (overweight) return { ok: false, reason: "heavy" };
+  if (overvolume) return { ok: false, reason: "bulky" };
+  return { ok: true, reason: null };
+}
+
 function canCarry(itemId, count = 1) {
-  return currentWeight() + ITEMS[itemId].weight * count <= MAX_WEIGHT;
+  return carryCheck(itemId, count).ok;
 }
 
 function addItem(itemId, count = 1) {
@@ -155,11 +179,13 @@ function harvest(node) {
   }
 
   const item = node.type === "tree" ? ITEMS.stick : ITEMS.stone;
-  if (!canCarry(item.id)) {
+  const check = carryCheck(item.id);
+  if (!check.ok) {
+    const refusal = REFUSALS[check.reason];
     state.blocked = true;
     canvas.classList.add("is-blocked");
-    spawnFloater(node.x, node.y - node.radius, "Too heavy", false);
-    hintEl.textContent = "Your pack is full. Click an item on the right to drop it.";
+    spawnFloater(node.x, node.y - node.radius, refusal.floater, false);
+    hintEl.textContent = refusal.hint;
     return;
   }
 
@@ -167,7 +193,7 @@ function harvest(node) {
   node.hits -= 1;
   const burstY = node.type === "tree" ? node.y - node.radius * 0.6 : node.y - node.radius * 0.15;
   spawnChips(node.x, burstY, node.type === "tree" ? "#8b5a2b" : "#9a9a9a", 12);
-  spawnFloater(node.x, node.y - node.radius, `+1 ${item.name}  (${item.weight} wt)`, true);
+  spawnFloater(node.x, node.y - node.radius, `+1 ${item.name}  (${item.weight} wt · ${item.volume} vol)`, true);
   hintEl.textContent = `Picked up a ${item.name.toLowerCase()}.`;
 
   if (node.hits <= 0) {
@@ -387,21 +413,36 @@ function itemForNode(node) {
   return node.type === "tree" ? "stick" : "stone";
 }
 
+function setGauge(fill, meter, label, used, max) {
+  const ratio = used / max;
+  label.textContent = `${used} / ${max}`;
+  fill.style.width = `${ratio * 100}%`;
+  meter.setAttribute("aria-valuenow", String(used));
+  fill.classList.toggle("is-heavy", ratio >= 0.7 && ratio < 1);
+  fill.classList.toggle("is-full", ratio >= 1);
+}
+
+function carryMessage(weight, volume) {
+  const weightRatio = weight / MAX_WEIGHT;
+  const volumeRatio = volume / MAX_VOLUME;
+  if (weight === 0 && volume === 0) return "Plenty of room.";
+  if (weightRatio >= 1 && volumeRatio >= 1) return "Packed tight and heavy. Drop something to gather again.";
+  if (weightRatio >= 1) return "Too heavy. Stones are dense — drop something.";
+  if (volumeRatio >= 1) return "No space left. Sticks are bulky — drop something.";
+  if (weightRatio >= 0.7 && volumeRatio >= 0.7) return "Getting heavy and bulky.";
+  if (weightRatio >= 0.7) return "Getting heavy. Stones eat the weight limit.";
+  if (volumeRatio >= 0.7) return "Getting bulky. Sticks eat the space.";
+  return "Still room to keep gathering.";
+}
+
 function renderInventory() {
   const weight = currentWeight();
-  const ratio = weight / MAX_WEIGHT;
-  weightLabel.textContent = `${weight} / ${MAX_WEIGHT}`;
-  weightFill.style.width = `${ratio * 100}%`;
-  weightMeter.setAttribute("aria-valuenow", String(weight));
-  weightFill.classList.toggle("is-heavy", ratio >= 0.7 && ratio < 1);
-  weightFill.classList.toggle("is-full", ratio >= 1);
+  const volume = currentVolume();
+  setGauge(weightFill, weightMeter, weightLabel, weight, MAX_WEIGHT);
+  setGauge(volumeFill, volumeMeter, volumeLabel, volume, MAX_VOLUME);
+  carryNote.textContent = carryMessage(weight, volume);
 
-  if (weight === 0) weightNote.textContent = "Plenty of room.";
-  else if (ratio >= 1) weightNote.textContent = "Pack is full. Drop something to gather again.";
-  else if (ratio >= 0.7) weightNote.textContent = "Getting heavy. Stones eat the limit fast.";
-  else weightNote.textContent = "Still light enough to keep gathering.";
-
-  if (weight < MAX_WEIGHT) {
+  if (canCarry("stick") || canCarry("stone")) {
     state.blocked = false;
     canvas.classList.remove("is-blocked");
   }
@@ -421,8 +462,8 @@ function renderInventory() {
           <span>x${stack.count}</span>
         </span>
         <span class="slot-meta">
-          <span>${item.weight} wt each</span>
-          <span>${item.weight * stack.count} wt</span>
+          <span>${item.weight} wt · ${item.volume} vol each</span>
+          <span>${item.weight * stack.count} wt · ${item.volume * stack.count} vol</span>
         </span>
       </span>
       <span class="slot-drop">Drop</span>
@@ -476,3 +517,11 @@ window.addEventListener("resize", resize);
 resize();
 renderInventory();
 loop(performance.now());
+
+window.ExperimentInventory = {
+  addItem,
+  dropItem,
+  carryCheck,
+  currentWeight,
+  currentVolume,
+};
