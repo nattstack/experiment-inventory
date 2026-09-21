@@ -4,6 +4,8 @@ A small HTML canvas gathering game. Click trees and rocks in the clearing, then 
 
 ## Play
 
+Live: [https://nattstack.github.io/experiment-inventory/](https://nattstack.github.io/experiment-inventory/)
+
 Open `index.html` in a browser, or serve the folder:
 
 ```bash
