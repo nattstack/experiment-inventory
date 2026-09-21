@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Experiment Inventory</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <main class="stage">
+        <canvas id="world" aria-label="Forest clearing"></canvas>
+        <p class="hint" id="hint">Click a tree or a rock to gather.</p>
+      </main>
+
+      <aside class="pack" aria-label="Inventory">
+        <header class="pack-header">
+          <p class="pack-kicker">Your pack</p>
+          <h1>Experiment Inventory</h1>
+        </header>
+
+        <section class="weight" aria-live="polite">
+          <div class="weight-row">
+            <span>Weight</span>
+            <span id="weight-label">0 / 20</span>
+          </div>
+          <div class="weight-track" role="meter" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0" id="weight-meter">
+            <div class="weight-fill" id="weight-fill"></div>
+          </div>
+          <p class="weight-note" id="weight-note">Plenty of room.</p>
+        </section>
+
+        <ul class="slots" id="slots"></ul>
+
+        <p class="empty" id="empty">Nothing carried yet. Trees give sticks. Rocks give stones.</p>
+      </aside>
+    </div>
+    <script src="game.js"></script>
+  </body>
+</html>
