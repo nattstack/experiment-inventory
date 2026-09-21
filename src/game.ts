@@ -79,7 +79,7 @@ const REFUSALS: Record<RefusalReason, { floater: string; hint: string }> = {
   bulky: { floater: "No room", hint: "No space left. Sticks are bulky — drop something." },
   full: {
     floater: "Pack is full",
-    hint: "Your pack is full. Click an item on the right to drop it.",
+    hint: "Your pack is full. Open your pack and drop something.",
   },
 }
 
@@ -114,6 +114,11 @@ const volumeLabel = requiredElement("volume-label")
 const volumeFill = requiredElement("volume-fill")
 const volumeMeter = requiredElement("volume-meter")
 const carryNote = requiredElement("carry-note")
+const packToggle = requiredElement<HTMLButtonElement>("pack-toggle")
+const packToggleMeta = requiredElement("pack-toggle-meta")
+const packLayer = requiredElement("pack-layer")
+const packBackdrop = requiredElement("pack-backdrop")
+const packClose = requiredElement<HTMLButtonElement>("pack-close")
 
 const state: GameState = {
   width: 0,
@@ -528,11 +533,21 @@ function carryMessage(weight: number, volume: number): string {
   return "Still room to keep gathering."
 }
 
+function isPackOpen(): boolean {
+  return !packLayer.hasAttribute("hidden")
+}
+
+function setPackOpen(open: boolean): void {
+  packLayer.toggleAttribute("hidden", !open)
+  packToggle.setAttribute("aria-expanded", String(open))
+}
+
 function renderInventory(): void {
   const weight = currentWeight()
   const volume = currentVolume()
   setGauge(weightFill, weightMeter, weightLabel, weight, MAX_WEIGHT)
   setGauge(volumeFill, volumeMeter, volumeLabel, volume, MAX_VOLUME)
+  packToggleMeta.textContent = `${weight} / ${MAX_WEIGHT} wt · ${volume} / ${MAX_VOLUME} vol`
   carryNote.textContent = carryMessage(weight, volume)
 
   if (canCarry("stick") || canCarry("stone")) {
@@ -544,10 +559,13 @@ function renderInventory(): void {
   state.inventory.forEach((stack) => {
     const item = ITEMS[stack.id]
     const li = document.createElement("li")
-    const button = document.createElement("button")
-    button.className = "slot"
-    button.type = "button"
-    button.innerHTML = `
+    li.className = "slot"
+
+    const itemButton = document.createElement("button")
+    itemButton.className = "slot-item"
+    itemButton.type = "button"
+    itemButton.setAttribute("aria-label", `Drop one ${item.name}`)
+    itemButton.innerHTML = `
       <span class="slot-icon" aria-hidden="true">${item.icon}</span>
       <span>
         <span class="slot-head">
@@ -559,13 +577,21 @@ function renderInventory(): void {
           <span>${item.weight * stack.count} wt · ${item.volume * stack.count} vol</span>
         </span>
       </span>
-      <span class="slot-drop">Drop</span>
     `
-    button.addEventListener("click", () => {
+
+    const dropButton = document.createElement("button")
+    dropButton.className = "slot-drop"
+    dropButton.type = "button"
+    dropButton.textContent = "Drop"
+
+    const dropOne = () => {
       dropItem(item.id)
       hintEl.textContent = `Dropped a ${item.name.toLowerCase()}.`
-    })
-    li.appendChild(button)
+    }
+    itemButton.addEventListener("click", dropOne)
+    dropButton.addEventListener("click", dropOne)
+
+    li.append(itemButton, dropButton)
     slotsEl.appendChild(li)
   })
 
@@ -604,6 +630,26 @@ canvas.addEventListener("click", (event) => {
     return
   }
   harvest(node)
+})
+
+packToggle.addEventListener("click", () => {
+  setPackOpen(!isPackOpen())
+})
+packBackdrop.addEventListener("click", () => {
+  setPackOpen(false)
+})
+packClose.addEventListener("click", () => {
+  setPackOpen(false)
+})
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && isPackOpen()) {
+    setPackOpen(false)
+    return
+  }
+  if (event.key === "i" || event.key === "I") {
+    if (event.target instanceof HTMLElement && event.target.closest("input, textarea")) return
+    setPackOpen(!isPackOpen())
+  }
 })
 
 window.addEventListener("resize", resize)

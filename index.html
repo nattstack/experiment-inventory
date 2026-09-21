@@ -12,55 +12,76 @@
       <main class="stage">
         <canvas id="world" aria-label="Forest clearing"></canvas>
         <p class="hint" id="hint">Click a tree or a rock to gather.</p>
+        <button
+          type="button"
+          class="pack-toggle"
+          id="pack-toggle"
+          aria-expanded="false"
+          aria-controls="pack"
+        >
+          <span class="pack-toggle-title">Pack</span>
+          <span class="pack-toggle-meta" id="pack-toggle-meta">0 / 20 wt · 0 / 16 vol</span>
+        </button>
       </main>
 
-      <aside class="pack" aria-label="Inventory">
-        <header class="pack-header">
-          <p class="pack-kicker">Your pack</p>
-          <h1>Experiment Inventory</h1>
-        </header>
-        <section class="gauges" aria-live="polite">
-          <div class="gauge">
-            <div class="gauge-row">
-              <span>Weight</span>
-              <span id="weight-label">0 / 20</span>
+      <div class="pack-layer" id="pack-layer" hidden>
+        <button
+          type="button"
+          class="pack-backdrop"
+          id="pack-backdrop"
+          aria-label="Close pack"
+        ></button>
+        <aside class="pack" id="pack" role="dialog" aria-modal="true" aria-labelledby="pack-title">
+          <header class="pack-header">
+            <div>
+              <p class="pack-kicker">Your pack</p>
+              <h1 id="pack-title">Experiment Inventory</h1>
             </div>
-            <div
-              class="gauge-track"
-              role="meter"
-              aria-valuemin="0"
-              aria-valuemax="20"
-              aria-valuenow="0"
-              id="weight-meter"
-            >
-              <div class="gauge-fill" id="weight-fill"></div>
+            <button type="button" class="pack-close" id="pack-close">Close</button>
+          </header>
+          <section class="gauges" aria-live="polite">
+            <div class="gauge">
+              <div class="gauge-row">
+                <span>Weight</span>
+                <span id="weight-label">0 / 20</span>
+              </div>
+              <div
+                class="gauge-track"
+                role="meter"
+                aria-valuemin="0"
+                aria-valuemax="20"
+                aria-valuenow="0"
+                id="weight-meter"
+              >
+                <div class="gauge-fill" id="weight-fill"></div>
+              </div>
             </div>
-          </div>
-          <div class="gauge">
-            <div class="gauge-row">
-              <span>Volume</span>
-              <span id="volume-label">0 / 16</span>
+            <div class="gauge">
+              <div class="gauge-row">
+                <span>Volume</span>
+                <span id="volume-label">0 / 16</span>
+              </div>
+              <div
+                class="gauge-track"
+                role="meter"
+                aria-valuemin="0"
+                aria-valuemax="16"
+                aria-valuenow="0"
+                id="volume-meter"
+              >
+                <div class="gauge-fill is-volume" id="volume-fill"></div>
+              </div>
             </div>
-            <div
-              class="gauge-track"
-              role="meter"
-              aria-valuemin="0"
-              aria-valuemax="16"
-              aria-valuenow="0"
-              id="volume-meter"
-            >
-              <div class="gauge-fill is-volume" id="volume-fill"></div>
-            </div>
-          </div>
-          <p class="gauge-note" id="carry-note">Plenty of room.</p>
-        </section>
+            <p class="gauge-note" id="carry-note">Plenty of room.</p>
+          </section>
 
-        <ul class="slots" id="slots"></ul>
+          <ul class="slots" id="slots"></ul>
 
-        <p class="empty" id="empty">
-          Nothing carried yet. Sticks are light but bulky. Stones are heavy and compact.
-        </p>
-      </aside>
+          <p class="empty" id="empty">
+            Nothing carried yet. Sticks are light but bulky. Stones are heavy and compact.
+          </p>
+        </aside>
+      </div>
     </div>
     <script type="module" src="dist/game.js"></script>
   </body>
