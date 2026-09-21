@@ -1,0 +1,13 @@
+{
+  "name": "experiment-inventory",
+  "private": true,
+  "description": "A canvas gathering game with a weight- and volume-limited inventory.",
+  "type": "module",
+  "scripts": {
+    "fmt": "oxfmt --config oxfmt.config.js",
+    "fmt:check": "oxfmt --config oxfmt.config.js --check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.68.0"
+  }
+}

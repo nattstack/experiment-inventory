@@ -22,4 +22,13 @@ Then visit [http://localhost:5173](http://localhost:5173).
 - Click an item in the pack to drop one and free space.
 - Harvested nodes become stumps or rubble, then grow back.
 
-No build step, no dependencies — just HTML, CSS, and canvas.
+Playing needs no build — just HTML, CSS, and canvas.
+
+## Format
+
+```bash
+npm install
+npm run fmt
+```
+
+`npm run fmt:check` reports files that are out of format without writing them.

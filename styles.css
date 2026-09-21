@@ -65,9 +65,7 @@ body {
   flex-direction: column;
   gap: 20px;
   padding: 28px 24px 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 220, 150, 0.06), transparent 28%),
-    var(--leather);
+  background: linear-gradient(180deg, rgba(255, 220, 150, 0.06), transparent 28%), var(--leather);
   border-left: 1px solid #5a3b22;
   box-shadow: inset 12px 0 24px rgba(0, 0, 0, 0.25);
 }
@@ -121,7 +119,9 @@ body {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--moss), #d2b56a);
-  transition: width 180ms ease, background 180ms ease;
+  transition:
+    width 180ms ease,
+    background 180ms ease;
 }
 
 .gauge-fill.is-volume {

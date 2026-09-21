@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -25,7 +25,14 @@
               <span>Weight</span>
               <span id="weight-label">0 / 20</span>
             </div>
-            <div class="gauge-track" role="meter" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0" id="weight-meter">
+            <div
+              class="gauge-track"
+              role="meter"
+              aria-valuemin="0"
+              aria-valuemax="20"
+              aria-valuenow="0"
+              id="weight-meter"
+            >
               <div class="gauge-fill" id="weight-fill"></div>
             </div>
           </div>
@@ -34,7 +41,14 @@
               <span>Volume</span>
               <span id="volume-label">0 / 16</span>
             </div>
-            <div class="gauge-track" role="meter" aria-valuemin="0" aria-valuemax="16" aria-valuenow="0" id="volume-meter">
+            <div
+              class="gauge-track"
+              role="meter"
+              aria-valuemin="0"
+              aria-valuemax="16"
+              aria-valuenow="0"
+              id="volume-meter"
+            >
               <div class="gauge-fill is-volume" id="volume-fill"></div>
             </div>
           </div>
@@ -43,7 +57,9 @@
 
         <ul class="slots" id="slots"></ul>
 
-        <p class="empty" id="empty">Nothing carried yet. Sticks are light but bulky. Stones are heavy and compact.</p>
+        <p class="empty" id="empty">
+          Nothing carried yet. Sticks are light but bulky. Stones are heavy and compact.
+        </p>
       </aside>
     </div>
     <script src="game.js"></script>
