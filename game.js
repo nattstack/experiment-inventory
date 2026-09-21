@@ -5,6 +5,16 @@ const ITEMS = {
   stone: { id: "stone", name: "Stone", weight: 3, icon: "🪨" },
 };
 
+const LAYOUT = [
+  { id: "tree-0", type: "tree", px: 0.2, py: 0.5 },
+  { id: "tree-1", type: "tree", px: 0.4, py: 0.66 },
+  { id: "tree-2", type: "tree", px: 0.62, py: 0.46 },
+  { id: "tree-3", type: "tree", px: 0.8, py: 0.58 },
+  { id: "rock-0", type: "rock", px: 0.28, py: 0.78 },
+  { id: "rock-1", type: "rock", px: 0.5, py: 0.74 },
+  { id: "rock-2", type: "rock", px: 0.72, py: 0.8 },
+];
+
 const canvas = document.getElementById("world");
 const ctx = canvas.getContext("2d");
 const hintEl = document.getElementById("hint");
@@ -18,6 +28,7 @@ const weightNote = document.getElementById("weight-note");
 const state = {
   width: 0,
   height: 0,
+  unit: 1,
   dpr: 1,
   nodes: [],
   floaters: [],
@@ -30,10 +41,6 @@ const state = {
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function currentWeight() {
@@ -63,83 +70,77 @@ function dropItem(itemId) {
   renderInventory();
 }
 
-function placeNodes() {
-  const { width, height } = state;
-  const trees = [
-    { x: width * 0.18, y: height * 0.42 },
-    { x: width * 0.36, y: height * 0.62 },
-    { x: width * 0.58, y: height * 0.38 },
-    { x: width * 0.78, y: height * 0.55 },
-  ];
-  const rocks = [
-    { x: width * 0.26, y: height * 0.74 },
-    { x: width * 0.48, y: height * 0.7 },
-    { x: width * 0.7, y: height * 0.76 },
-  ];
-
-  state.nodes = [
-    ...trees.map((point, index) => ({
-      id: `tree-${index}`,
-      type: "tree",
-      x: point.x,
-      y: point.y,
-      radius: 46,
-      hits: 3,
-      maxHits: 3,
+function layoutNodes() {
+  const { width, height, unit } = state;
+  LAYOUT.forEach((spot) => {
+    const existing = state.nodes.find((node) => node.id === spot.id);
+    const radius = unit * (spot.type === "tree" ? 0.13 : 0.075);
+    const next = {
+      x: width * spot.px,
+      y: height * spot.py,
+      radius,
+    };
+    if (existing) {
+      Object.assign(existing, next);
+      return;
+    }
+    const maxHits = spot.type === "tree" ? 3 : 2;
+    state.nodes.push({
+      id: spot.id,
+      type: spot.type,
+      hits: maxHits,
+      maxHits,
       cooldown: 0,
-    })),
-    ...rocks.map((point, index) => ({
-      id: `rock-${index}`,
-      type: "rock",
-      x: point.x,
-      y: point.y,
-      radius: 34,
-      hits: 2,
-      maxHits: 2,
-      cooldown: 0,
-    })),
-  ];
+      ...next,
+    });
+  });
 }
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
   state.width = rect.width;
   state.height = rect.height;
+  state.unit = Math.min(rect.width, rect.height);
   state.dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.floor(rect.width * state.dpr);
   canvas.height = Math.floor(rect.height * state.dpr);
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-  placeNodes();
+  layoutNodes();
+}
+
+function nodeContains(node, x, y) {
+  if (node.type === "tree") {
+    const canopyX = node.x;
+    const canopyY = node.y - node.radius * 0.72;
+    const canopyR = node.radius * 0.95;
+    const inCanopy = (x - canopyX) ** 2 + (y - canopyY) ** 2 <= canopyR * canopyR;
+    const inTrunk =
+      Math.abs(x - node.x) < node.radius * 0.2 &&
+      y >= node.y - node.radius * 0.35 &&
+      y <= node.y + node.radius * 0.18;
+    return inCanopy || inTrunk;
+  }
+  const reach = node.radius * 1.15;
+  return (x - node.x) ** 2 + (y - node.y) ** 2 <= reach * reach;
 }
 
 function nodeAt(x, y) {
-  return state.nodes.find((node) => {
-    const reach = node.type === "tree" ? node.radius + 10 : node.radius + 6;
-    const dx = x - node.x;
-    const dy = y - node.y;
-    return dx * dx + dy * dy <= reach * reach;
-  });
+  return [...state.nodes].reverse().find((node) => nodeContains(node, x, y));
 }
 
 function spawnFloater(x, y, text, ok) {
-  state.floaters.push({
-    x,
-    y,
-    text,
-    ok,
-    life: 1,
-  });
+  state.floaters.push({ x, y, text, ok, life: 1 });
 }
 
 function spawnChips(x, y, color, count) {
   for (let i = 0; i < count; i += 1) {
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(40, 140);
+    const speed = rand(50, 160);
     state.chips.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 40,
+      vy: Math.sin(angle) * speed - 50,
       life: 1,
       color,
     });
@@ -148,7 +149,7 @@ function spawnChips(x, y, color, count) {
 
 function harvest(node) {
   if (node.cooldown > 0) {
-    spawnFloater(node.x, node.y - 36, "Still growing", false);
+    spawnFloater(node.x, node.y - node.radius, "Still growing", false);
     hintEl.textContent = "That spot is spent. Wait for it to grow back.";
     return;
   }
@@ -157,15 +158,16 @@ function harvest(node) {
   if (!canCarry(item.id)) {
     state.blocked = true;
     canvas.classList.add("is-blocked");
-    spawnFloater(node.x, node.y - 36, "Too heavy", false);
+    spawnFloater(node.x, node.y - node.radius, "Too heavy", false);
     hintEl.textContent = "Your pack is full. Click an item on the right to drop it.";
     return;
   }
 
   addItem(item.id);
   node.hits -= 1;
-  spawnChips(node.x, node.y - (node.type === "tree" ? 28 : 8), node.type === "tree" ? "#8b5a2b" : "#9a9a9a", 10);
-  spawnFloater(node.x, node.y - 42, `+1 ${item.name}  (${item.weight} wt)`, true);
+  const burstY = node.type === "tree" ? node.y - node.radius * 0.6 : node.y - node.radius * 0.15;
+  spawnChips(node.x, burstY, node.type === "tree" ? "#8b5a2b" : "#9a9a9a", 12);
+  spawnFloater(node.x, node.y - node.radius, `+1 ${item.name}  (${item.weight} wt)`, true);
   hintEl.textContent = `Picked up a ${item.name.toLowerCase()}.`;
 
   if (node.hits <= 0) {
@@ -189,7 +191,7 @@ function update(dt) {
 
   state.floaters = state.floaters.filter((floater) => {
     floater.life -= dt * 0.7;
-    floater.y -= 28 * dt;
+    floater.y -= 32 * dt;
     return floater.life > 0;
   });
 
@@ -211,15 +213,16 @@ function drawSky() {
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  const sunR = state.unit * 0.055;
+  ctx.fillStyle = "rgba(255,255,255,0.62)";
   ctx.beginPath();
-  ctx.ellipse(width * 0.82, height * 0.14, 46, 46, 0, 0, Math.PI * 2);
+  ctx.arc(width * 0.84, height * 0.14, sunR, 0, Math.PI * 2);
   ctx.fill();
 }
 
 function drawGround() {
   const { width, height } = state;
-  const grassTop = height * 0.48;
+  const grassTop = height * 0.46;
   const hill = ctx.createLinearGradient(0, grassTop, 0, height);
   hill.addColorStop(0, "#6f9a49");
   hill.addColorStop(1, "#3f6a32");
@@ -227,51 +230,53 @@ function drawGround() {
   ctx.beginPath();
   ctx.moveTo(0, height);
   ctx.lineTo(0, grassTop + 30);
-  ctx.quadraticCurveTo(width * 0.25, grassTop - 20, width * 0.5, grassTop + 18);
-  ctx.quadraticCurveTo(width * 0.75, grassTop + 50, width, grassTop);
+  ctx.quadraticCurveTo(width * 0.25, grassTop - height * 0.04, width * 0.5, grassTop + 18);
+  ctx.quadraticCurveTo(width * 0.75, grassTop + height * 0.06, width, grassTop);
   ctx.lineTo(width, height);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "rgba(47, 86, 36, 0.35)";
-  for (let i = 0; i < 28; i += 1) {
+  ctx.fillStyle = "rgba(47, 86, 36, 0.32)";
+  const blade = Math.max(6, state.unit * 0.012);
+  for (let i = 0; i < 36; i += 1) {
     const x = (i * 97) % width;
     const y = grassTop + 40 + ((i * 53) % (height * 0.42));
-    ctx.fillRect(x, y, 2, 9);
+    ctx.fillRect(x, y, 2, blade);
   }
 }
 
 function drawTree(node) {
   const spent = node.cooldown > 0;
-  const sway = spent ? 0 : Math.sin(state.time * 1.2 + node.x * 0.01) * 3;
+  const r = node.radius;
+  const sway = spent ? 0 : Math.sin(state.time * 1.2 + node.x * 0.01) * (r * 0.04);
   ctx.save();
   ctx.translate(node.x, node.y);
 
   ctx.fillStyle = "rgba(20, 30, 12, 0.22)";
   ctx.beginPath();
-  ctx.ellipse(4, 10, 34, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(r * 0.08, r * 0.12, r * 0.62, r * 0.16, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#6a4326";
-  ctx.fillRect(-8, -18, 16, 28);
+  ctx.fillRect(-r * 0.12, -r * 0.28, r * 0.24, r * 0.4);
   ctx.fillStyle = "#4d301b";
-  ctx.fillRect(-8, -18, 5, 28);
+  ctx.fillRect(-r * 0.12, -r * 0.28, r * 0.08, r * 0.4);
 
   if (!spent) {
     ctx.translate(sway, 0);
-    const leaf = (dx, dy, r, color) => {
+    const leaf = (dx, dy, radius, color) => {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(dx, dy, r, 0, Math.PI * 2);
+      ctx.arc(dx, dy, radius, 0, Math.PI * 2);
       ctx.fill();
     };
-    leaf(-6, -52, 28, "#2f6a38");
-    leaf(18, -48, 24, "#3d8644");
-    leaf(-20, -40, 22, "#2a5a32");
-    leaf(4, -68, 20, "#4a9a52");
+    leaf(-r * 0.08, -r * 0.78, r * 0.5, "#2f6a38");
+    leaf(r * 0.32, -r * 0.7, r * 0.42, "#3d8644");
+    leaf(-r * 0.36, -r * 0.62, r * 0.38, "#2a5a32");
+    leaf(r * 0.06, -r * 1.02, r * 0.34, "#4a9a52");
   } else {
     ctx.fillStyle = "#5a3a22";
-    ctx.fillRect(-10, -8, 20, 8);
+    ctx.fillRect(-r * 0.16, -r * 0.1, r * 0.32, r * 0.12);
   }
 
   ctx.restore();
@@ -279,45 +284,46 @@ function drawTree(node) {
 
 function drawRock(node) {
   const spent = node.cooldown > 0;
+  const r = node.radius;
   ctx.save();
   ctx.translate(node.x, node.y);
   ctx.fillStyle = "rgba(20, 30, 12, 0.2)";
   ctx.beginPath();
-  ctx.ellipse(2, 12, 28, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(r * 0.04, r * 0.22, r * 0.72, r * 0.2, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.beginPath();
   if (spent) {
     ctx.fillStyle = "#7d7a74";
-    ctx.moveTo(-22, 8);
-    ctx.lineTo(-8, -4);
-    ctx.lineTo(6, 6);
-    ctx.lineTo(18, 2);
-    ctx.lineTo(22, 10);
+    ctx.moveTo(-r * 0.7, r * 0.22);
+    ctx.lineTo(-r * 0.22, -r * 0.08);
+    ctx.lineTo(r * 0.16, r * 0.16);
+    ctx.lineTo(r * 0.5, 0);
+    ctx.lineTo(r * 0.62, r * 0.26);
     ctx.closePath();
     ctx.fill();
   } else {
     ctx.fillStyle = "#8d8a84";
-    ctx.moveTo(-26, 10);
-    ctx.lineTo(-18, -12);
-    ctx.lineTo(4, -20);
-    ctx.lineTo(24, -6);
-    ctx.lineTo(22, 12);
+    ctx.moveTo(-r * 0.78, r * 0.28);
+    ctx.lineTo(-r * 0.5, -r * 0.36);
+    ctx.lineTo(r * 0.1, -r * 0.58);
+    ctx.lineTo(r * 0.7, -r * 0.16);
+    ctx.lineTo(r * 0.64, r * 0.32);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.beginPath();
-    ctx.moveTo(-10, -8);
-    ctx.lineTo(2, -16);
-    ctx.lineTo(8, -8);
+    ctx.moveTo(-r * 0.28, -r * 0.18);
+    ctx.lineTo(r * 0.06, -r * 0.44);
+    ctx.lineTo(r * 0.22, -r * 0.16);
     ctx.closePath();
     ctx.fill();
     if (node.hits < node.maxHits) {
       ctx.strokeStyle = "rgba(40,40,40,0.55)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(2, r * 0.05);
       ctx.beginPath();
-      ctx.moveTo(-4, -10);
-      ctx.lineTo(2, 6);
+      ctx.moveTo(-r * 0.1, -r * 0.28);
+      ctx.lineTo(r * 0.06, r * 0.16);
       ctx.stroke();
     }
   }
@@ -327,11 +333,12 @@ function drawRock(node) {
 function drawHover(node) {
   if (!node || node.cooldown > 0) return;
   ctx.save();
-  ctx.strokeStyle = "rgba(255, 236, 180, 0.7)";
+  ctx.strokeStyle = "rgba(255, 236, 180, 0.75)";
   ctx.lineWidth = 2;
-  ctx.setLineDash([5, 5]);
+  ctx.setLineDash([6, 6]);
+  const y = node.type === "tree" ? node.y - node.radius * 0.72 : node.y;
   ctx.beginPath();
-  ctx.arc(node.x, node.y - (node.type === "tree" ? 24 : 2), node.radius, 0, Math.PI * 2);
+  ctx.arc(node.x, y, node.radius * 0.95, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
@@ -347,7 +354,7 @@ function drawFx() {
   state.floaters.forEach((floater) => {
     ctx.globalAlpha = floater.life;
     ctx.fillStyle = floater.ok ? "#fff4cc" : "#ffb3a1";
-    ctx.font = "16px Georgia, serif";
+    ctx.font = `${Math.max(14, state.unit * 0.022)}px Georgia, serif`;
     ctx.textAlign = "center";
     ctx.fillText(floater.text, floater.x, floater.y);
   });
@@ -358,10 +365,12 @@ function draw() {
   drawSky();
   drawGround();
   const hover = state.nodes.find((node) => node.id === state.hoverId);
-  [...state.nodes].sort((a, b) => a.y - b.y).forEach((node) => {
-    if (node.type === "tree") drawTree(node);
-    else drawRock(node);
-  });
+  [...state.nodes]
+    .sort((a, b) => a.y - b.y)
+    .forEach((node) => {
+      if (node.type === "tree") drawTree(node);
+      else drawRock(node);
+    });
   drawHover(hover);
   drawFx();
 }
@@ -372,6 +381,10 @@ function pointerToWorld(event) {
     x: event.clientX - rect.left,
     y: event.clientY - rect.top,
   };
+}
+
+function itemForNode(node) {
+  return node.type === "tree" ? "stick" : "stone";
 }
 
 function renderInventory() {
@@ -438,7 +451,7 @@ canvas.addEventListener("pointermove", (event) => {
   const { x, y } = pointerToWorld(event);
   const node = nodeAt(x, y);
   state.hoverId = node ? node.id : null;
-  if (node && node.cooldown === 0 && !canCarry(node.type === "tree" ? "stick" : "stone")) {
+  if (node && node.cooldown === 0 && !canCarry(itemForNode(node))) {
     canvas.classList.add("is-blocked");
   } else if (!state.blocked) {
     canvas.classList.remove("is-blocked");
