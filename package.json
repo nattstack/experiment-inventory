@@ -4,10 +4,17 @@
   "description": "A canvas gathering game with a weight- and volume-limited inventory.",
   "type": "module",
   "scripts": {
-    "fmt": "oxfmt --config oxfmt.config.js",
-    "fmt:check": "oxfmt --config oxfmt.config.js --check"
+    "build": "bun build src/game.ts --outdir dist --target browser --sourcemap=external",
+    "check": "tsc --noEmit",
+    "dev": "bun build src/game.ts --outdir dist --target browser --sourcemap=external --watch",
+    "fmt": "oxfmt --config oxfmt.config.ts",
+    "fmt:check": "oxfmt --config oxfmt.config.ts --check",
+    "start": "bun serve.ts"
   },
   "devDependencies": {
-    "oxfmt": "^0.68.0"
-  }
+    "@types/bun": "latest",
+    "oxfmt": "^0.68.0",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "bun@1.4.0"
 }

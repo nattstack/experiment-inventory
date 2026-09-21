@@ -1,12 +1,80 @@
+type ItemId = "stick" | "stone"
+type NodeKind = "tree" | "rock"
+type RefusalReason = "heavy" | "bulky" | "full"
+
+type Item = {
+  id: ItemId
+  name: string
+  weight: number
+  volume: number
+  icon: string
+}
+
+type CarryResult = { ok: true; reason: null } | { ok: false; reason: RefusalReason }
+
+type LayoutSpot = {
+  id: string
+  type: NodeKind
+  px: number
+  py: number
+}
+
+type WorldNode = {
+  id: string
+  type: NodeKind
+  x: number
+  y: number
+  radius: number
+  hits: number
+  maxHits: number
+  cooldown: number
+}
+
+type InventoryStack = {
+  id: ItemId
+  count: number
+}
+
+type Floater = {
+  x: number
+  y: number
+  text: string
+  ok: boolean
+  life: number
+}
+
+type Chip = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  color: string
+}
+
+type GameState = {
+  width: number
+  height: number
+  unit: number
+  dpr: number
+  nodes: WorldNode[]
+  floaters: Floater[]
+  chips: Chip[]
+  inventory: InventoryStack[]
+  hoverId: string | null
+  time: number
+  blocked: boolean
+}
+
 const MAX_WEIGHT = 20
 const MAX_VOLUME = 16
 
-const ITEMS = {
+const ITEMS: Record<ItemId, Item> = {
   stick: { id: "stick", name: "Stick", weight: 1, volume: 2, icon: "🪵" },
   stone: { id: "stone", name: "Stone", weight: 3, volume: 1, icon: "🪨" },
 }
 
-const REFUSALS = {
+const REFUSALS: Record<RefusalReason, { floater: string; hint: string }> = {
   heavy: { floater: "Too heavy", hint: "Too heavy. Stones are dense — drop something." },
   bulky: { floater: "No room", hint: "No space left. Sticks are bulky — drop something." },
   full: {
@@ -15,7 +83,7 @@ const REFUSALS = {
   },
 }
 
-const LAYOUT = [
+const LAYOUT: LayoutSpot[] = [
   { id: "tree-0", type: "tree", px: 0.2, py: 0.5 },
   { id: "tree-1", type: "tree", px: 0.4, py: 0.66 },
   { id: "tree-2", type: "tree", px: 0.62, py: 0.46 },
@@ -25,20 +93,29 @@ const LAYOUT = [
   { id: "rock-2", type: "rock", px: 0.72, py: 0.8 },
 ]
 
-const canvas = document.getElementById("world")
-const ctx = canvas.getContext("2d")
-const hintEl = document.getElementById("hint")
-const slotsEl = document.getElementById("slots")
-const emptyEl = document.getElementById("empty")
-const weightLabel = document.getElementById("weight-label")
-const weightFill = document.getElementById("weight-fill")
-const weightMeter = document.getElementById("weight-meter")
-const volumeLabel = document.getElementById("volume-label")
-const volumeFill = document.getElementById("volume-fill")
-const volumeMeter = document.getElementById("volume-meter")
-const carryNote = document.getElementById("carry-note")
+function requiredElement<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id)
+  if (!el) throw new Error(`Missing #${id}`)
+  return el as T
+}
 
-const state = {
+const canvas = requiredElement<HTMLCanvasElement>("world")
+const context = canvas.getContext("2d")
+if (!context) throw new Error("2D canvas is not available")
+const ctx = context
+
+const hintEl = requiredElement("hint")
+const slotsEl = requiredElement("slots")
+const emptyEl = requiredElement("empty")
+const weightLabel = requiredElement("weight-label")
+const weightFill = requiredElement("weight-fill")
+const weightMeter = requiredElement("weight-meter")
+const volumeLabel = requiredElement("volume-label")
+const volumeFill = requiredElement("volume-fill")
+const volumeMeter = requiredElement("volume-meter")
+const carryNote = requiredElement("carry-note")
+
+const state: GameState = {
   width: 0,
   height: 0,
   unit: 1,
@@ -52,19 +129,19 @@ const state = {
   blocked: false,
 }
 
-function rand(min, max) {
+function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
 }
 
-function currentWeight() {
+function currentWeight(): number {
   return state.inventory.reduce((sum, stack) => sum + stack.count * ITEMS[stack.id].weight, 0)
 }
 
-function currentVolume() {
+function currentVolume(): number {
   return state.inventory.reduce((sum, stack) => sum + stack.count * ITEMS[stack.id].volume, 0)
 }
 
-function carryCheck(itemId, count = 1) {
+function carryCheck(itemId: ItemId, count = 1): CarryResult {
   const item = ITEMS[itemId]
   const overweight = currentWeight() + item.weight * count > MAX_WEIGHT
   const overvolume = currentVolume() + item.volume * count > MAX_VOLUME
@@ -74,11 +151,11 @@ function carryCheck(itemId, count = 1) {
   return { ok: true, reason: null }
 }
 
-function canCarry(itemId, count = 1) {
+function canCarry(itemId: ItemId, count = 1): boolean {
   return carryCheck(itemId, count).ok
 }
 
-function addItem(itemId, count = 1) {
+function addItem(itemId: ItemId, count = 1): boolean {
   if (!canCarry(itemId, count)) return false
   const stack = state.inventory.find((entry) => entry.id === itemId)
   if (stack) stack.count += count
@@ -87,7 +164,7 @@ function addItem(itemId, count = 1) {
   return true
 }
 
-function dropItem(itemId) {
+function dropItem(itemId: ItemId): void {
   const stack = state.inventory.find((entry) => entry.id === itemId)
   if (!stack) return
   stack.count -= 1
@@ -97,7 +174,7 @@ function dropItem(itemId) {
   renderInventory()
 }
 
-function layoutNodes() {
+function layoutNodes(): void {
   const { width, height, unit } = state
   LAYOUT.forEach((spot) => {
     const existing = state.nodes.find((node) => node.id === spot.id)
@@ -123,7 +200,7 @@ function layoutNodes() {
   })
 }
 
-function resize() {
+function resize(): void {
   const rect = canvas.getBoundingClientRect()
   state.width = rect.width
   state.height = rect.height
@@ -135,7 +212,7 @@ function resize() {
   layoutNodes()
 }
 
-function nodeContains(node, x, y) {
+function nodeContains(node: WorldNode, x: number, y: number): boolean {
   if (node.type === "tree") {
     const canopyX = node.x
     const canopyY = node.y - node.radius * 0.72
@@ -151,15 +228,15 @@ function nodeContains(node, x, y) {
   return (x - node.x) ** 2 + (y - node.y) ** 2 <= reach * reach
 }
 
-function nodeAt(x, y) {
+function nodeAt(x: number, y: number): WorldNode | undefined {
   return [...state.nodes].reverse().find((node) => nodeContains(node, x, y))
 }
 
-function spawnFloater(x, y, text, ok) {
+function spawnFloater(x: number, y: number, text: string, ok: boolean): void {
   state.floaters.push({ x, y, text, ok, life: 1 })
 }
 
-function spawnChips(x, y, color, count) {
+function spawnChips(x: number, y: number, color: string, count: number): void {
   for (let i = 0; i < count; i += 1) {
     const angle = rand(0, Math.PI * 2)
     const speed = rand(50, 160)
@@ -174,7 +251,7 @@ function spawnChips(x, y, color, count) {
   }
 }
 
-function harvest(node) {
+function harvest(node: WorldNode): void {
   if (node.cooldown > 0) {
     spawnFloater(node.x, node.y - node.radius, "Still growing", false)
     hintEl.textContent = "That spot is spent. Wait for it to grow back."
@@ -213,7 +290,7 @@ function harvest(node) {
   }
 }
 
-function update(dt) {
+function update(dt: number): void {
   state.time += dt
   state.nodes.forEach((node) => {
     if (node.cooldown > 0) {
@@ -240,7 +317,7 @@ function update(dt) {
   })
 }
 
-function drawSky() {
+function drawSky(): void {
   const { width, height } = state
   const sky = ctx.createLinearGradient(0, 0, 0, height * 0.62)
   sky.addColorStop(0, "#8ec4de")
@@ -256,7 +333,7 @@ function drawSky() {
   ctx.fill()
 }
 
-function drawGround() {
+function drawGround(): void {
   const { width, height } = state
   const grassTop = height * 0.46
   const hill = ctx.createLinearGradient(0, grassTop, 0, height)
@@ -281,7 +358,7 @@ function drawGround() {
   }
 }
 
-function drawTree(node) {
+function drawTree(node: WorldNode): void {
   const spent = node.cooldown > 0
   const r = node.radius
   const sway = spent ? 0 : Math.sin(state.time * 1.2 + node.x * 0.01) * (r * 0.04)
@@ -300,7 +377,7 @@ function drawTree(node) {
 
   if (!spent) {
     ctx.translate(sway, 0)
-    const leaf = (dx, dy, radius, color) => {
+    const leaf = (dx: number, dy: number, radius: number, color: string) => {
       ctx.fillStyle = color
       ctx.beginPath()
       ctx.arc(dx, dy, radius, 0, Math.PI * 2)
@@ -318,7 +395,7 @@ function drawTree(node) {
   ctx.restore()
 }
 
-function drawRock(node) {
+function drawRock(node: WorldNode): void {
   const spent = node.cooldown > 0
   const r = node.radius
   ctx.save()
@@ -366,7 +443,7 @@ function drawRock(node) {
   ctx.restore()
 }
 
-function drawHover(node) {
+function drawHover(node: WorldNode | undefined): void {
   if (!node || node.cooldown > 0) return
   ctx.save()
   ctx.strokeStyle = "rgba(255, 236, 180, 0.75)"
@@ -379,7 +456,7 @@ function drawHover(node) {
   ctx.restore()
 }
 
-function drawFx() {
+function drawFx(): void {
   state.chips.forEach((chip) => {
     ctx.globalAlpha = chip.life
     ctx.fillStyle = chip.color
@@ -397,21 +474,20 @@ function drawFx() {
   ctx.globalAlpha = 1
 }
 
-function draw() {
+function draw(): void {
   drawSky()
   drawGround()
   const hover = state.nodes.find((node) => node.id === state.hoverId)
-  ;[...state.nodes]
-    .sort((a, b) => a.y - b.y)
-    .forEach((node) => {
-      if (node.type === "tree") drawTree(node)
-      else drawRock(node)
-    })
+  const ordered = [...state.nodes].sort((a, b) => a.y - b.y)
+  ordered.forEach((node) => {
+    if (node.type === "tree") drawTree(node)
+    else drawRock(node)
+  })
   drawHover(hover)
   drawFx()
 }
 
-function pointerToWorld(event) {
+function pointerToWorld(event: PointerEvent | MouseEvent): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect()
   return {
     x: event.clientX - rect.left,
@@ -419,11 +495,17 @@ function pointerToWorld(event) {
   }
 }
 
-function itemForNode(node) {
+function itemForNode(node: WorldNode): ItemId {
   return node.type === "tree" ? "stick" : "stone"
 }
 
-function setGauge(fill, meter, label, used, max) {
+function setGauge(
+  fill: HTMLElement,
+  meter: HTMLElement,
+  label: HTMLElement,
+  used: number,
+  max: number,
+): void {
   const ratio = used / max
   label.textContent = `${used} / ${max}`
   fill.style.width = `${ratio * 100}%`
@@ -432,7 +514,7 @@ function setGauge(fill, meter, label, used, max) {
   fill.classList.toggle("is-full", ratio >= 1)
 }
 
-function carryMessage(weight, volume) {
+function carryMessage(weight: number, volume: number): string {
   const weightRatio = weight / MAX_WEIGHT
   const volumeRatio = volume / MAX_VOLUME
   if (weight === 0 && volume === 0) return "Plenty of room."
@@ -446,7 +528,7 @@ function carryMessage(weight, volume) {
   return "Still room to keep gathering."
 }
 
-function renderInventory() {
+function renderInventory(): void {
   const weight = currentWeight()
   const volume = currentVolume()
   setGauge(weightFill, weightMeter, weightLabel, weight, MAX_WEIGHT)
@@ -490,7 +572,7 @@ function renderInventory() {
   emptyEl.classList.toggle("is-hidden", state.inventory.length > 0)
 }
 
-function loop(last) {
+function loop(last: number): void {
   requestAnimationFrame((now) => {
     const dt = Math.min(0.033, (now - last) / 1000)
     update(dt)
@@ -536,3 +618,17 @@ window.ExperimentInventory = {
   currentWeight,
   currentVolume,
 }
+
+declare global {
+  interface Window {
+    ExperimentInventory: {
+      addItem: typeof addItem
+      dropItem: typeof dropItem
+      carryCheck: typeof carryCheck
+      currentWeight: typeof currentWeight
+      currentVolume: typeof currentVolume
+    }
+  }
+}
+
+export {}

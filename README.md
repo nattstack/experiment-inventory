@@ -6,13 +6,15 @@ A small HTML canvas gathering game. Click trees and rocks in the clearing, then 
 
 Live: [https://nattstack.github.io/experiment-inventory/](https://nattstack.github.io/experiment-inventory/)
 
-Open `index.html` in a browser, or serve the folder:
-
 ```bash
-python3 -m http.server 5173
+bun install
+bun run build
+bun start
 ```
 
 Then visit [http://localhost:5173](http://localhost:5173).
+
+`bun run dev` rebuilds `src/game.ts` into `dist/` as you edit. `dist/` is build output and is not committed; GitHub Pages rebuilds it on every push to `main`.
 
 ## How it works
 
@@ -22,13 +24,12 @@ Then visit [http://localhost:5173](http://localhost:5173).
 - Click an item in the pack to drop one and free space.
 - Harvested nodes become stumps or rubble, then grow back.
 
-Playing needs no build — just HTML, CSS, and canvas.
-
 ## Format
 
 ```bash
-npm install
-npm run fmt
+bun install
+bun run fmt
 ```
 
-`npm run fmt:check` reports files that are out of format without writing them.
+`bun run fmt:check` reports files that are out of format without writing them.
+`bun run check` typechecks with `tsc`.
